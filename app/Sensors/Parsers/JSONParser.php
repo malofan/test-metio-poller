@@ -16,7 +16,12 @@ class JSONParser implements Parser
         $output = [];
         $data = \json_decode($input, true);
 
-        $measureDate = \current(\array_keys($data));
+        if (empty($data) || !is_array($data)) {
+
+            return $output;
+        }
+
+        $measureDate = new \DateTime(\current(\array_keys($data)));
 
         foreach (\current($data) as $city => $measurements) {
             $day = $measurements['day'];
