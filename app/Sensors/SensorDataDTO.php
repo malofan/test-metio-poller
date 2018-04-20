@@ -3,7 +3,7 @@
 namespace App\Sensors;
 
 
-class SensorDTO
+class SensorDataDTO
 {
     /**
      * @var string
