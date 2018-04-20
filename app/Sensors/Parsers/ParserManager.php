@@ -22,7 +22,7 @@ class ParserManager
     /**
      * Get a Parser instance.
      *
-     * @param  string  $name
+     * @param  string  $input
      * @return SensorDTO[]
      *
      * @throws UnparseableInputException
