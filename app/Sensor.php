@@ -1,58 +1,20 @@
 <?php
 
-namespace App\Sensors;
+namespace App;
 
-use GuzzleHttp\Client as HttpClient;
-use App\Sensors\Parsers\Parser;
+use Illuminate\Database\Eloquent\Model;
 
 
-abstract class Sensor
+class Sensor extends Model
 {
-    const REQUEST_TIMEOUT = 10;
-    /**
-     * @var SensorAttributes
-     */
-    private $attributes;
-    /**
-     * @var SensorDTO[]
-     */
-    private $sensorData = [];
-    /**
-     * @var Parser
-     */
-    private $parser;
+    protected $fillable = [
+        'url',
+    ];
 
-    public function __construct(SensorAttributes $attributes, Parser $parser)
+    public $timestamps = false;
+
+    public function sensorData()
     {
-        $this->attributes = $attributes;
-        $this->parser = $parser;
-    }
-
-    /**
-     * @throws \Exception
-     */
-    public function poll(): void
-    {
-        $httpClient = new HttpClient();
-        try {
-            $rowSensorData = $httpClient->get(
-                $this->attributes->getUrl(),
-                [
-                    'timeout' => self::REQUEST_TIMEOUT
-                ]
-            );
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
-            throw new \Exception(sprintf("There is no response from sensor with ID: %d in %d seconds", $this->attributes->getId(), self::REQUEST_TIMEOUT));
-        }
-
-        $this->sensorData = $this->parser->parse($rowSensorData);
-    }
-
-    /**
-     * @return array
-     */
-    public function getData(): array
-    {
-        return $this->sensorData;
+        return $this->hasMany(SensorData::class);
     }
 }
