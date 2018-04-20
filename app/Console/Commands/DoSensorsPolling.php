@@ -12,6 +12,13 @@ use Illuminate\Console\Command;
 use GuzzleHttp\Client as HttpClient;
 use Illuminate\Support\Facades\Log;
 
+use App\Amp\Tasks\CollectSensorData;
+use Amp\Coroutine;
+use Amp\Loop;
+use Amp\Parallel\Worker\DefaultPool;
+use function Amp\Promise\all as promiseAll;
+
+
 class DoSensorsPolling extends Command
 {
     const REQUEST_TIMEOUT = 10;
@@ -57,8 +64,6 @@ class DoSensorsPolling extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return mixed
      */
     public function handle()
     {
@@ -66,55 +71,63 @@ class DoSensorsPolling extends Command
             return [$city->name => $city->city_id];
         });
 
-        foreach (Sensor::all() as $sensor) {
-            try {
-                $response = $this->httpClient->get(
-                    $sensor->url,
-                    [
-                        'timeout' => self::REQUEST_TIMEOUT
-                    ]
-                );
-                /**
-                 * @var SensorDataDTOList
-                 */
-                $sensorData = $this->parserManager->parse($response->getBody());
+        $tasks = Sensor::all()
+            ->mapWithKeys(function ($sensor) {
+                return [$sensor->id => new CollectSensorData('file_get_contents', $sensor->url)];
+            })
+            ->all();
 
-                foreach ($sensorData as $sensorDTO) {
-                    SensorData::create([
-                        'sensor_id' => $sensor->id,
-                        'date' => $sensorDTO->getDate(),
-                        'city_id' => $cities->get($sensorDTO->getCity()),
-                        'day_temperature' => $sensorDTO->getDayTemperature(),
-                        'night_temperature' => $sensorDTO->getNightTemperature(),
-                        'day_humidity' => $sensorDTO->getDayHumidity(),
-                        'night_humidity' => $sensorDTO->getNightHumidity(),
-                    ]);
-                }
-            }
-            catch (\GuzzleHttp\Exception\RequestException $e) {
-                Log::warning(sprintf(
-                    'There is no response from Sensor with ID %d in %d seconds.' . PHP_EOL
-                    . 'Reason message: %s',
-                    $sensor->id,
-                    self::REQUEST_TIMEOUT,
-                    $e->getMessage()
-                ));
-            }
-            catch (UnparseableInputException $e) {
-                Log::warning(sprintf(
-                    'Response from Sensor with ID %d cannot be parsed.' . PHP_EOL
-                    . 'Parser exception:' . PHP_EOL
-                    . ' %s',
-                    $sensor->id,
-                    $e->getMessage()
-                ));
-            }
-            catch (\Illuminate\Database\QueryException $e) {
+        Loop::run(function () use (&$tasks, $cities) {
+            $timer = Loop::repeat(200, function () {
+                printf(".");
+            });
+            Loop::unreference($timer);
+            $pool = new DefaultPool;
+            $coroutines = [];
+            foreach ($tasks as $sensorId => $task) {
+                $coroutines[] = function () use ($pool, $sensorId, $task, $cities) {
+                    $response =  yield $pool->enqueue($task);
 
+                    try {
+                        /**
+                         * @var SensorDataDTOList
+                         */
+                        $sensorData = $this->parserManager->parse($response);
+
+                        foreach ($sensorData as $sensorDTO) {
+                            SensorData::create([
+                                'sensor_id' => $sensorId,
+                                'date' => $sensorDTO->getDate(),
+                                'city_id' => $cities->get($sensorDTO->getCity()),
+                                'day_temperature' => $sensorDTO->getDayTemperature(),
+                                'night_temperature' => $sensorDTO->getNightTemperature(),
+                                'day_humidity' => $sensorDTO->getDayHumidity(),
+                                'night_humidity' => $sensorDTO->getNightHumidity(),
+                            ]);
+                        }
+                    }
+                    catch (UnparseableInputException $e) {
+                        Log::warning(sprintf(
+                            'Response from Sensor with ID %d cannot be parsed.' . PHP_EOL
+                            . 'Parser exception:' . PHP_EOL
+                            . ' %s',
+                            $sensorId,
+                            $e->getMessage()
+                        ));
+                    }
+                    catch (\Illuminate\Database\QueryException $e) {
+
+                    }
+                    catch (\Exception $e) {
+                        Log::warning($e->getMessage());
+                    }
+                };
             }
-            catch (\Exception $e) {
-                Log::warning($e->getMessage());
-            }
-        }
+            $coroutines = array_map(function (callable $coroutine): Coroutine {
+                return new Coroutine($coroutine());
+            }, $coroutines);
+            yield promiseAll($coroutines);
+            return yield $pool->shutdown();
+        });
     }
 }
