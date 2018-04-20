@@ -3,7 +3,7 @@
 namespace App\Sensors\Parsers;
 
 
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTOList;
 
 class ParserManager
 {
@@ -23,17 +23,17 @@ class ParserManager
      * Get a Parser instance.
      *
      * @param  string  $input
-     * @return SensorDTO[]
+     * @return SensorDataDTOList
      *
      * @throws UnparseableInputException
      */
-    public function parse($input): array
+    public function parse($input): SensorDataDTOList
     {
         foreach ($this->parsers as $parser) {
-            $instance = $this->instances[$parser] ?? $this->instance($parser);
-            $output = $instance->parse($input);
+            $this->instances[$parser] = $this->instance($parser);
+            $output = $this->instances[$parser]->parse($input);
 
-            if (!empty($output)) {
+            if ($output->valid()) {
 
                 return $output;
             }
@@ -50,6 +50,29 @@ class ParserManager
      */
     protected function instance($name): Parser
     {
-        return $this->instances[$name] ?? new $name();
+        return $this->instances[$name] ?? $this->resolve($name);
+    }
+
+    protected function resolve($name)
+    {
+        $parser = (new \ReflectionClass($name))->getShortName();
+
+        $clientMethod = 'create'.$parser;
+
+        if (method_exists($this, $clientMethod)) {
+            return $this->{$clientMethod}();
+        } else {
+            throw new \InvalidArgumentException("Parser [{$name}] is not supported.");
+        }
+    }
+
+    protected function createJSONParser(): Parser
+    {
+        return new JSONParser(new SensorDataDTOList());
+    }
+
+    protected function createCSVParser(): Parser
+    {
+        return new CSVParser(new SensorDataDTOList());
     }
 }

@@ -3,39 +3,44 @@
 namespace App\Sensors\Parsers;
 
 
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTO;
 
-class JSONParser implements Parser
+class JSONParser extends BaseParser
 {
     /**
-     * @param string $input
-     * @return SensorDTO[]
+     * {@inheritdoc}
      */
-    public function parse(string $input): array
+    protected function getDataFromInput(string $input): array
     {
-        $output = [];
-        $data = \json_decode($input, true);
+        return (array)\json_decode($input, true);
+    }
 
-        if (empty($data) || !is_array($data)) {
+    /**
+     * {@inheritdoc}
+     */
+    protected function valid(array $data): bool
+    {
+        return !empty($data) && \strtotime(\current(\array_keys($data))) !== false;
+    }
 
-            return $output;
-        }
-
+    /**
+     * {@inheritdoc}
+     */
+    protected function fillListWithData(array $data): void
+    {
         $measureDate = new \DateTime(\current(\array_keys($data)));
 
         foreach (\current($data) as $city => $measurements) {
             $day = $measurements['day'];
             $night = $measurements['night'];
-            $output[] = new SensorDTO(
+            $this->list->addDTO(new SensorDataDTO(
                 $measureDate,
                 $city,
-                $day['temperature'],
-                $day['humidity'],
-                $night['temperature'],
-                $night['humidity']
-            );
+                (float)$day['temperature'],
+                (float)$day['humidity'],
+                (float)$night['temperature'],
+                (float)$night['humidity']
+            ));
         }
-
-        return $output;
     }
 }

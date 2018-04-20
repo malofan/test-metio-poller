@@ -7,7 +7,7 @@ use App\Sensor;
 use App\SensorData;
 use App\Sensors\Parsers\ParserManager;
 use App\Sensors\Parsers\UnparseableInputException;
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTOList;
 use Illuminate\Console\Command;
 use GuzzleHttp\Client as HttpClient;
 use Illuminate\Support\Facades\Log;
@@ -75,7 +75,7 @@ class DoSensorsPolling extends Command
                     ]
                 );
                 /**
-                 * @var SensorDTO[]
+                 * @var SensorDataDTOList
                  */
                 $sensorData = $this->parserManager->parse($response->getBody());
 

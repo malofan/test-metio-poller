@@ -3,13 +3,13 @@
 namespace App\Sensors\Parsers;
 
 
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTOList;
 
 interface Parser
 {
     /**
      * @param string $input
-     * @return SensorDTO[]
+     * @return SensorDataDTOList
      */
-    public function parse(string $input): array;
+    public function parse(string $input): SensorDataDTOList;
 }

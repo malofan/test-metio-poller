@@ -3,36 +3,41 @@
 namespace App\Sensors\Parsers;
 
 
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTO;
 
-class CSVParser implements Parser
+class CSVParser extends BaseParser
 {
     /**
-     * @param string $input
-     * @return SensorDTO[]
+     * {@inheritdoc}
      */
-    public function parse(string $input): array
+    protected function getDataFromInput(string $input): array
     {
-        $output = [];
-        $data = array_map('str_getcsv', str_getcsv($input, PHP_EOL));
+        return \array_map('str_getcsv', \str_getcsv($input, PHP_EOL));
+    }
 
-        if (empty($data) || !is_array($data)) {
+    /**
+     * {@inheritdoc}
+     */
+    protected function valid(array $data): bool
+    {
+        return $data[0][0] !== null;
+    }
 
-            return $output;
-        }
-
+    /**
+     * {@inheritdoc}
+     */
+    protected function fillListWithData(array $data): void
+    {
         foreach ($data as $measurements) {
             [$date, $city, $dayTemperature, $nightTemperature, $dayHumidity, $nightHumidity] = $measurements;
-            $output[] = new SensorDTO(
+            $this->list->addDTO(new SensorDataDTO(
                 new \DateTime($date),
                 $city,
-                $dayTemperature,
-                $nightTemperature,
-                $dayHumidity,
-                $nightHumidity
-            );
+                (float)$dayTemperature,
+                (float)$nightTemperature,
+                (float)$dayHumidity,
+                (float)$nightHumidity
+            ));
         }
-
-        return $output;
     }
 }
