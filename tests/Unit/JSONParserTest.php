@@ -3,17 +3,16 @@
 namespace Tests\Unit;
 
 use App\Sensors\Parsers\JSONParser;
-use App\Sensors\SensorDTO;
+use App\Sensors\SensorDataDTO;
+use App\Sensors\SensorDataDTOList;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class JSONParserTest extends TestCase
 {
     /**
      * @return void
      */
-    public function testJSONParser()
+    public function testItemOfTypeSensorDataDTO()
     {
         $jsonString = '{
           "2017-08-31": {
@@ -50,6 +49,6 @@ class JSONParserTest extends TestCase
           }
         }';
 
-        $this->assertInstanceOf(SensorDTO::class, \current((new JSONParser())->parse($jsonString)));
+        $this->assertInstanceOf(SensorDataDTO::class, (new JSONParser(new SensorDataDTOList))->parse($jsonString)->current());
     }
 }
