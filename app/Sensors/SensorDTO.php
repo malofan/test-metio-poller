@@ -32,7 +32,7 @@ class SensorDTO
 
 
     public function __construct(
-        string $date,
+        \DateTime $date,
         string $city,
         float $dayTemperature,
         float $dayHumidity,
@@ -60,7 +60,7 @@ class SensorDTO
      */
     public function getDate(): string
     {
-        return $this->date;
+        return $this->date->format('Y-m-d');
     }
 
     /**
