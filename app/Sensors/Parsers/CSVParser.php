@@ -20,7 +20,7 @@ class CSVParser extends BaseParser
      */
     protected function valid(array $data): bool
     {
-        return $data[0][0] !== null;
+        return !empty($data[0][0]);
     }
 
     /**
