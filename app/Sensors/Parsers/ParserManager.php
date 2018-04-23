@@ -61,9 +61,9 @@ class ParserManager
 
         if (method_exists($this, $clientMethod)) {
             return $this->{$clientMethod}();
-        } else {
-            throw new \InvalidArgumentException("Parser [{$name}] is not supported.");
         }
+
+        throw new \InvalidArgumentException(sprintf("Parser [%s] is not supported.", $name));
     }
 
     protected function createJSONParser(): Parser
