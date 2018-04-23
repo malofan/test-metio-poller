@@ -80,15 +80,19 @@ class DoSensorsPolling extends Command
                 $sensorData = $this->parserManager->parse($response->getBody());
 
                 foreach ($sensorData as $sensorDTO) {
-                    SensorData::create([
-                        'sensor_id' => $sensor->id,
-                        'date' => $sensorDTO->getDate(),
-                        'city_id' => $cities->get($sensorDTO->getCity()),
-                        'day_temperature' => $sensorDTO->getDayTemperature(),
-                        'night_temperature' => $sensorDTO->getNightTemperature(),
-                        'day_humidity' => $sensorDTO->getDayHumidity(),
-                        'night_humidity' => $sensorDTO->getNightHumidity(),
-                    ]);
+                    try {
+                        SensorData::create([
+                            'sensor_id' => $sensor->id,
+                            'date' => $sensorDTO->getDate(),
+                            'city_id' => $cities->get($sensorDTO->getCity()),
+                            'day_temperature' => $sensorDTO->getDayTemperature(),
+                            'night_temperature' => $sensorDTO->getNightTemperature(),
+                            'day_humidity' => $sensorDTO->getDayHumidity(),
+                            'night_humidity' => $sensorDTO->getNightHumidity(),
+                        ]);
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        Log::warning($e->getMessage());
+                    }
                 }
             }
             catch (\GuzzleHttp\Exception\RequestException $e) {
@@ -108,9 +112,6 @@ class DoSensorsPolling extends Command
                     $sensor->id,
                     $e->getMessage()
                 ));
-            }
-            catch (\Illuminate\Database\QueryException $e) {
-
             }
             catch (\Exception $e) {
                 Log::warning($e->getMessage());
